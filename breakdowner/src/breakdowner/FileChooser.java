@@ -29,15 +29,19 @@ import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 public class FileChooser extends JPanel
                              implements ActionListener {
     static private final String newline = "\n";
-    JButton openButton, saveButton;
+    JButton openButton, saveButton, dirButton;
     JTextArea log;
     JFileChooser fc;
-    File file;
+    JFileChooser dc;
+    File[] files;
+    File dir;
     String filename;
+    //String dirName;
     
     static int ARCH_TOTAL = 259;
     static int CON_TOTAL = 127;
     static int VM_TOTAL = 115;
+    static int NS_TOTAL = 70;
     
     
     
@@ -81,9 +85,10 @@ public class FileChooser extends JPanel
 
         //Create a file chooser
         fc = new JFileChooser();
+        fc.setMultiSelectionEnabled(true);
 
-       
-        //fc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
+        dc = new JFileChooser();
+        dc.setFileSelectionMode(JFileChooser.DIRECTORIES_ONLY);
         //fc.setFileSelectionMode(JFileChooser.FILES_AND_DIRECTORIES);
 
         
@@ -91,14 +96,20 @@ public class FileChooser extends JPanel
         openButton.addActionListener(this);
 
       
-        saveButton = new JButton("Create breakdown");
+        saveButton = new JButton("Create breakdown(s)");
         saveButton.addActionListener(this);
+        
+        dirButton = new JButton("Choose output directory");
+        dirButton.addActionListener(this);
 
         //For layout purposes, put the buttons in a separate panel
         JPanel buttonPanel = new JPanel(); //use FlowLayout
         buttonPanel.add(openButton);
         buttonPanel.add(saveButton);
+        buttonPanel.add(dirButton);
 
+        dir = new File("");
+        
         //Add the buttons and the log to this panel.
         add(buttonPanel, BorderLayout.PAGE_START);
         add(logScrollPane, BorderLayout.CENTER);
@@ -107,16 +118,40 @@ public class FileChooser extends JPanel
     public void actionPerformed(ActionEvent e) {
 
         //Handle open button action.
+    	if(e.getSource() == dirButton){
+    		int returnVal = dc.showOpenDialog(FileChooser.this);
+    		
+    		if(returnVal == JFileChooser.APPROVE_OPTION) {
+    			dir = dc.getSelectedFile();
+    			log.append("Output directory: " + dir.toString());
+    			
+    			
+    			
+    		} else {
+    			log.append("Directory command aborted." + newline);
+    		}
+    		
+    		
+    	}
+    	
         if (e.getSource() == openButton) {
             int returnVal = fc.showOpenDialog(FileChooser.this);
 
             if (returnVal == JFileChooser.APPROVE_OPTION) {
-                file = fc.getSelectedFile();
-                //This is where a real application would open the file.
+                files = fc.getSelectedFiles();
+                
+                
+                //List files selected
+                for(File file : files)
+                {
+                	              
                 filename = file.getName();
-                log.append("Opening: " + file.getName() + "." + newline);
+                log.append("Opening: " + file.getName() + ", ");
+                
+                }
+                log.append(newline);
             } else {
-                log.append("Open command cancelled by user." + newline);
+                log.append("Open command aborted." + newline);
             }
             log.setCaretPosition(log.getDocument().getLength());
 
@@ -126,8 +161,10 @@ public class FileChooser extends JPanel
         
         //Handle save button action.
         } else if (e.getSource() == saveButton) {
-            
-                file = fc.getSelectedFile();
+        	files = fc.getSelectedFiles();
+            for(File file : files)
+            {
+                //file = fc.getSelectedFile();
                 //This is where the magic happens *_*
                 log.append("Converting: " + file.getName() + "." + newline);
                 
@@ -149,7 +186,7 @@ public class FileChooser extends JPanel
         		}
         		
         		//FIND THE COLUMNS BRO
-        		Sheet inputSheet = inputBook.getSheetAt(1);	//grab arch sheet first
+        		Sheet inputSheet = inputBook.getSheetAt(1);		//grab arch sheet first
         	    Row inRow = inputSheet.getRow(6);	// row 7 headers
         	    for(int i=0; i<inRow.getLastCellNum(); i++)
         	    {
@@ -167,7 +204,7 @@ public class FileChooser extends JPanel
             	    	
         	    }
         	    
-        	    inputSheet = inputBook.getSheetAt(2);
+        	    inputSheet = inputBook.getSheetAt(2);		//construction sheet
         	    inRow = inputSheet.getRow(6);
         	    for(int i=0; i<inRow.getLastCellNum(); i++)
         	    {
@@ -185,7 +222,7 @@ public class FileChooser extends JPanel
             	    	
         	    }
         	    
-        	    inputSheet = inputBook.getSheetAt(3);
+        	    inputSheet = inputBook.getSheetAt(3);		//VM sheet
         	    inRow = inputSheet.getRow(6);
         	    for(int i=0; i<inRow.getLastCellNum(); i++)
         	    {
@@ -200,6 +237,23 @@ public class FileChooser extends JPanel
         	    		V_Description = i;
         	    	if( cellValue.equalsIgnoreCase("QTY") )
             	    	V_QTY = i;
+        	    }
+        	    
+        	    inputSheet = inputBook.getSheetAt(4);		//non standard sheet
+        	    inRow = inputSheet.getRow(6);
+        	    for(int i=0; i<inRow.getLastCellNum(); i++)
+        	    {
+        	    	String cellValue = inRow.getCell(i).getStringCellValue();
+        	    	if( cellValue.equalsIgnoreCase("Delivery #") )
+        	    		N_Delivery = i;
+        	    	if( cellValue.equalsIgnoreCase("Fixture Type"))
+        	    		N_Type = i;
+        	    	if( cellValue.equalsIgnoreCase("SKU") )
+        	    		N_SKU = i;
+        	    	if( cellValue.equalsIgnoreCase("Fixture Item"))
+        	    		N_Description = i;
+        	    	if( cellValue.equalsIgnoreCase("QTY") )
+            	    	N_QTY = i;
         	    }
         		
         		System.out.println("A_Delivery: "+ A_Delivery);
@@ -247,6 +301,7 @@ public class FileChooser extends JPanel
         	     * 		arch	274
         	     * 		con		125
         	     * 		vm		113
+        	     * 		ns		65
         	     * 
         	     * 		row 52 col 1 (51,0) Version: 1.1 - 6/16/15
         	     * 
@@ -255,6 +310,7 @@ public class FileChooser extends JPanel
         	     * 		arch 	259
         	     * 		con		127
         	     * 		vm		115
+        	     * 		NS		70
         	     */
         	    
         	   
@@ -262,6 +318,7 @@ public class FileChooser extends JPanel
         	    ARCH_TOTAL=259;
         	    CON_TOTAL = 127;
         	    VM_TOTAL = 115;
+        	    NS_TOTAL = 65;
         	    
         	    System.out.println(inputSheet.getLastRowNum());
         	    //System.out.println("ROW 51 last cell num:" + inRow.getLastCellNum());
@@ -272,6 +329,7 @@ public class FileChooser extends JPanel
         	    		ARCH_TOTAL = 274;
         	    		CON_TOTAL = 125;
         	    		VM_TOTAL = 113;
+        	    		NS_TOTAL = 69;
         	    	}
         	    }
         	    
@@ -406,13 +464,17 @@ public class FileChooser extends JPanel
         		//System.out.println(tempCell.toString());
         		
         		tempCell = inputRow.getCell(C_QTY);
+        		
         		if(tempCell.getCellType() == Cell.CELL_TYPE_FORMULA)
         		{
         		CellValue cellValue = evaluator.evaluate(tempCell);
         		outRow.createCell(5).setCellValue((int)cellValue.getNumberValue());	//quantity
         		}else{
-        			outRow.createCell(5).setCellValue((int) Double.parseDouble(tempCell.toString()));
+        			outRow.createCell(5).setCellValue(tempCell.toString());
         		}
+        		
+        		
+        		
         		rowCounter++;
         		}//end if
         		
@@ -456,13 +518,56 @@ public class FileChooser extends JPanel
         		}else{
         			outRow.createCell(5).setCellValue((int) Double.parseDouble(tempCell.toString()));
         		}
+        		
         		rowCounter++;
         		}//end if
         		
         		
         		}//end for
         		
-        		//inputSheet = inputBook.getSheetAt(4);			//Non Standard fixtures
+        		inputSheet = inputBook.getSheetAt(4);			//Non Standard fixtures
+        		
+        		for(int i=10; i<NS_TOTAL; i++)						//NON standard loop
+        		{
+        		
+        			
+        		Row inputRow = inputSheet.getRow(i);	//ROW NUMBER-1
+        		Row outRow = outSheet.createRow(rowCounter);
+        		if(inputRow.getCell(1).toString().equalsIgnoreCase("") == false) //check empty by delivery #
+        		{
+        		
+        		
+        		Cell tempCell = inputRow.getCell(N_Delivery);	//should be delivery #
+        		outRow.createCell(0).setCellValue((int)Double.parseDouble(tempCell.toString()));
+        		
+        		
+        		tempCell = inputRow.getCell(N_Type);
+        		outRow.createCell(1).setCellValue(tempCell.toString()); //type
+        		
+        		
+        		tempCell = inputRow.getCell(N_SKU);
+        		outRow.createCell(2).setCellValue(tempCell.toString());	//sku
+        		
+        		
+        		tempCell = inputRow.getCell(N_Description);
+        		outRow.createCell(3).setCellValue(tempCell.toString());	//description
+        		
+        		
+        		tempCell = inputRow.getCell(N_QTY);
+        		if(tempCell.getCellType() == Cell.CELL_TYPE_FORMULA)
+        		{
+        		CellValue cellValue = evaluator.evaluate(tempCell);
+        		outRow.createCell(5).setCellValue((int)cellValue.getNumberValue());	//quantity
+        		}else{
+        			outRow.createCell(5).setCellValue((int) Double.parseDouble(tempCell.toString()));
+        		}
+        		
+        		rowCounter++;
+        		}//end if
+        		
+        		
+        		}//end for
+        		
         		
         		
         		
@@ -516,7 +621,16 @@ public class FileChooser extends JPanel
         		//END TABLE STYLE */
         		
         		try {
-        			FileOutputStream fos = new FileOutputStream(filename +" breakdown.xlsx");
+        			String filePath = dir.getPath();
+        			filename = filename.substring(0, filename.length()-5);
+        			System.out.println(filePath +"\\" + filename);
+        			FileOutputStream fos;
+        			if(filePath == "")
+        			{
+        				fos = new FileOutputStream(filename + " breakdown.xlsx");
+        			}else{
+        			fos = new FileOutputStream(filePath +"\\"+ filename +" breakdown.xlsx");
+        			}
         			wb.write(fos);
         			fos.close();
         			
@@ -533,11 +647,13 @@ public class FileChooser extends JPanel
         	
                 
                 
-                log.append("Such success wow" + newline);
+                log.append(filename + " breakdown created" + newline);
+            }//end for
             } else {
-                log.append("Command cancelled by user." + newline);
+                //log.append("Command cancelled by user." + newline);
             }
             log.setCaretPosition(log.getDocument().getLength());
+        
         
     }
 
@@ -559,7 +675,7 @@ public class FileChooser extends JPanel
      */
     private static void createAndShowGUI() {
         //Create and set up the window.
-        JFrame frame = new JFrame("Excelerator 3000");
+        JFrame frame = new JFrame("Excelerator 3000 v1.1");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         //Add content to the window.
